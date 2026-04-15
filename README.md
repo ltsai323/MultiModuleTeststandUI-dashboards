@@ -48,7 +48,7 @@ Use **docker compose** for building grafana dashboard.
 Use docker compose to handle the building. Before activate the docker container, you need to modify the following setups.
 
 1. Assign database
-Modify `provisioning/datasources/datasources.yaml`. By default you need to assign the database **hgcdb** and **PLC variables** for showing environment variables
+Modify [provisioning/datasources/datasources.yaml](provisioning/datasources/datasources.yaml). By default you need to assign the database **hgcdb** and **PLC variables** for showing environment variables
 (Once the temperature / humidity recorded into DB, than we can merge them)
 ```
 datasources:
