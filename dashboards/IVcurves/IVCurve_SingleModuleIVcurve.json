@@ -288,6 +288,6 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "Single module IV curve",
-  "uid": "iv_curve-plot-search-module",
+  "uid": "singlemoduleivcurve",
   "version": 2
 }

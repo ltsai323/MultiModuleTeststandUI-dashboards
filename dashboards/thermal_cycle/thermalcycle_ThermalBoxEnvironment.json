@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 26,
+  "id": 16,
   "links": [],
   "panels": [
     {
@@ -609,6 +609,6 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "Thermal Box Environment",
-  "uid": "adc8th7",
-  "version": 11
+  "uid": "adcj5bb",
+  "version": 1
 }

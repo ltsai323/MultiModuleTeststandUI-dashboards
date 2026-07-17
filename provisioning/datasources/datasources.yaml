@@ -11,22 +11,22 @@ datasources:
   - name: mac-postgres-db
     uid: mac_postgres_db
     type: grafana-postgresql-datasource
-    url: hgcdbIPaddr:5432
+    url: 192.168.50.213:5432
     database: hgcdb
     user: postgres  # Update if your username is different
     secureJsonData:
-      password: thePASSword
+      password: "33665146"
     jsonData:
       sslmode: 'disable'
     isDefault: true
   - name: grafana-postgresql-datasource-PLC
     uid: grafana_postgresql_datasource_PLC
     type: grafana-postgresql-datasource
-    url: 192.168.0.0:5432
+    url: 192.168.50.32:5432
     database: PLC_COLLECT
-    user: theUSER
+    user: TIDC_B205
     secureJsonData:
-      password: thePASSWORD
+      password: "amb33665146"
     jsonData:
       sslmode: 'disable'
     isDefault: false

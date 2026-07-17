@@ -1,0 +1,30 @@
+apiVersion: 1
+
+providers:
+  - name: 'disk-loaded-bashboards0'
+    orgId: 1
+    folder: 'stable_version/stocks'
+    type: file
+    disableDeletion: false
+    allowUiUpdates: true
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards/stocks/
+  - name: 'disk-loaded-bashboards1'
+    orgId: 1
+    folder: 'stable_version/hermal_cycle'
+    type: file
+    disableDeletion: false
+    allowUiUpdates: true
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards/thermal_cycle/
+  - name: 'disk-loaded-bashboards2'
+    orgId: 1
+    folder: 'stable_version/IVcurves'
+    type: file
+    disableDeletion: false
+    allowUiUpdates: true
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards/IVcurve/

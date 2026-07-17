@@ -1,0 +1,787 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 59,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "mac_postgres_db"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 50,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "pointShape": "circle",
+            "pointSize": {
+              "fixed": 5
+            },
+            "pointStrokeWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "show": "lines"
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "i"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.scaleDistribution",
+                "value": {
+                  "log": 10,
+                  "type": "log"
+                }
+              },
+              {
+                "id": "max",
+                "value": 0.001
+              },
+              {
+                "id": "min",
+                "value": 1e-7
+              },
+              {
+                "id": "unit",
+                "value": "sci"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Leakage Current [A]"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "absv"
+            },
+            "properties": [
+              {
+                "id": "max",
+                "value": 850
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Reverse Bias [V]"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mapping": "auto",
+        "series": [
+          {
+            "x": {
+              "matcher": {
+                "id": "byName",
+                "options": "absv"
+              }
+            },
+            "y": {
+              "matcher": {
+                "id": "byName",
+                "options": "i"
+              }
+            }
+          }
+        ],
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.3.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "mac_postgres_db"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH\n\tLATEST_STAGES AS (\n\t\tSELECT DISTINCT\n\t\t\tON (SPLIT_PART(COMMENT, '-', 1)) SPLIT_PART(COMMENT, '-', 1) AS STAGE,\n\t\t\tCOMMENT,\n\t\t\tTO_DATE(SPLIT_PART(COMMENT, '-', 2), 'YYYYMMDD') AS TEST_DATE\n\t\tFROM\n\t\t\tPUBLIC.MODULE_IV_TEST\n\t\tWHERE\n\t\t\tCOMMENT ~ '^stage[1-4]-[0-9]{8}$'\n\t\tORDER BY\n\t\t\tSPLIT_PART(COMMENT, '-', 1),\n\t\t\tTO_DATE(SPLIT_PART(COMMENT, '-', 2), 'YYYYMMDD') DESC\n\t),\n\tSELECTED_STAGE AS (\n\t\tSELECT\n\t\t\tCOMMENT\n\t\tFROM\n\t\t\tLATEST_STAGES\n\t\tWHERE\n\t\t\tSTAGE = 'stage1'\n\t),\n\tFILTERED_IV AS (\n\t\tSELECT\n\t\t\tM.*,\n\t\t\tM.MEAS_I[ARRAY_LENGTH(M.MEAS_I, 1)] AS I_LAST\n\t\tFROM\n\t\t\tMODULE_IV_TEST AS M\n\t\t\tJOIN SELECTED_STAGE AS L ON M.COMMENT = L.COMMENT\n\t),\n\tUNNESTED AS (\n\t\tSELECT\n\t\t\tMODULE_NAME,\n\t\t\tABS(V) AS ABSV,\n\t\t\tI,\n\t\t\t(DATE_TEST + TIME_TEST) AS TESTTIMESTAMP\n\t\tFROM\n\t\t\tFILTERED_IV,\n\t\t\tUNNEST(PROGRAM_V, MEAS_I) AS T (V, I) -- use program_v instead of meas_v since the case 0 volt from keithley hits compliance.\n\t)\nSELECT\n\tMODULE_NAME,\n\tABSV,\n\tI\nFROM\n\tUNNESTED\nWHERE\n\tABSV != 0 -- voltage=0 means module hits compliance current\nORDER BY\n\tTESTTIMESTAMP,\n\tRIGHT(MODULE_NAME, 4) ASC,\n\tABSV ASC;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "stage1: Ambient-Roomtemp",
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "module_name"
+            ],
+            "keepFields": false
+          }
+        }
+      ],
+      "type": "xychart"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "mac_postgres_db"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 50,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "pointShape": "circle",
+            "pointSize": {
+              "fixed": 5
+            },
+            "pointStrokeWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "show": "lines"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "i"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.scaleDistribution",
+                "value": {
+                  "log": 10,
+                  "type": "log"
+                }
+              },
+              {
+                "id": "max",
+                "value": 0.001
+              },
+              {
+                "id": "min",
+                "value": 1e-7
+              },
+              {
+                "id": "unit",
+                "value": "sci"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Leakage Current [A]"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "absv"
+            },
+            "properties": [
+              {
+                "id": "max",
+                "value": 850
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Reverse Bias [V]"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mapping": "auto",
+        "series": [
+          {
+            "x": {
+              "matcher": {
+                "id": "byName",
+                "options": "absv"
+              }
+            },
+            "y": {
+              "matcher": {
+                "id": "byName",
+                "options": "i"
+              }
+            }
+          }
+        ],
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.3.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "mac_postgres_db"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH\n\tLATEST_STAGES AS (\n\t\tSELECT DISTINCT\n\t\t\tON (SPLIT_PART(COMMENT, '-', 1)) SPLIT_PART(COMMENT, '-', 1) AS STAGE,\n\t\t\tCOMMENT,\n\t\t\tTO_DATE(SPLIT_PART(COMMENT, '-', 2), 'YYYYMMDD') AS TEST_DATE\n\t\tFROM\n\t\t\tPUBLIC.MODULE_IV_TEST\n\t\tWHERE\n\t\t\tCOMMENT ~ '^stage[1-4]-[0-9]{8}$'\n\t\tORDER BY\n\t\t\tSPLIT_PART(COMMENT, '-', 1),\n\t\t\tTO_DATE(SPLIT_PART(COMMENT, '-', 2), 'YYYYMMDD') DESC\n\t),\n\tSELECTED_STAGE AS (\n\t\tSELECT\n\t\t\tCOMMENT\n\t\tFROM\n\t\t\tLATEST_STAGES\n\t\tWHERE\n\t\t\tSTAGE = 'stage2'\n\t),\n\tFILTERED_IV AS (\n\t\tSELECT\n\t\t\tM.*,\n\t\t\tM.MEAS_I[ARRAY_LENGTH(M.MEAS_I, 1)] AS I_LAST\n\t\tFROM\n\t\t\tMODULE_IV_TEST AS M\n\t\t\tJOIN SELECTED_STAGE AS L ON M.COMMENT = L.COMMENT\n\t),\n\tUNNESTED AS (\n\t\tSELECT\n\t\t\tMODULE_NAME,\n\t\t\tABS(V) AS ABSV,\n\t\t\tI,\n\t\t\t(DATE_TEST + TIME_TEST) AS TESTTIMESTAMP\n\t\tFROM\n\t\t\tFILTERED_IV,\n\t\t\tUNNEST(PROGRAM_V, MEAS_I) AS T (V, I) -- use program_v instead of meas_v since the case 0 volt from keithley hits compliance.\n\t)\nSELECT\n\tMODULE_NAME,\n\tABSV,\n\tI\nFROM\n\tUNNESTED\nWHERE\n\tABSV != 0 -- voltage=0 means module hits compliance current\nORDER BY\n\tTESTTIMESTAMP,\n\tRIGHT(MODULE_NAME, 4) ASC,\n\tABSV ASC;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "stage2: first Dry-Lowtemp",
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "module_name"
+            ],
+            "keepFields": false
+          }
+        }
+      ],
+      "type": "xychart"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "mac_postgres_db"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 50,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "pointShape": "circle",
+            "pointSize": {
+              "fixed": 5
+            },
+            "pointStrokeWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "show": "lines"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "i"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.scaleDistribution",
+                "value": {
+                  "log": 10,
+                  "type": "log"
+                }
+              },
+              {
+                "id": "max",
+                "value": 0.001
+              },
+              {
+                "id": "min",
+                "value": 1e-7
+              },
+              {
+                "id": "unit",
+                "value": "sci"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Leakage Current [A]"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "abs"
+            },
+            "properties": [
+              {
+                "id": "max",
+                "value": 850
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Reverse Bias [V]"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mapping": "auto",
+        "series": [
+          {
+            "y": {
+              "matcher": {
+                "id": "byName",
+                "options": "i"
+              }
+            }
+          }
+        ],
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.3.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "mac_postgres_db"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH\n\tLATEST_STAGES AS (\n\t\tSELECT DISTINCT\n\t\t\tON (SPLIT_PART(COMMENT, '-', 1)) SPLIT_PART(COMMENT, '-', 1) AS STAGE,\n\t\t\tCOMMENT,\n\t\t\tTO_DATE(SPLIT_PART(COMMENT, '-', 2), 'YYYYMMDD') AS TEST_DATE\n\t\tFROM\n\t\t\tPUBLIC.MODULE_IV_TEST\n\t\tWHERE\n\t\t\tCOMMENT ~ '^stage[1-4]-[0-9]{8}$'\n\t\tORDER BY\n\t\t\tSPLIT_PART(COMMENT, '-', 1),\n\t\t\tTO_DATE(SPLIT_PART(COMMENT, '-', 2), 'YYYYMMDD') DESC\n\t),\n\tSELECTED_STAGE AS (\n\t\tSELECT\n\t\t\tCOMMENT\n\t\tFROM\n\t\t\tLATEST_STAGES\n\t\tWHERE\n\t\t\tSTAGE = 'stage3'\n\t),\n\tFILTERED_IV AS (\n\t\tSELECT\n\t\t\tM.*,\n\t\t\tM.MEAS_I[ARRAY_LENGTH(M.MEAS_I, 1)] AS I_LAST\n\t\tFROM\n\t\t\tMODULE_IV_TEST AS M\n\t\t\tJOIN SELECTED_STAGE AS L ON M.COMMENT = L.COMMENT\n\t),\n\tUNNESTED AS (\n\t\tSELECT\n\t\t\tMODULE_NAME,\n\t\t\tABS(V) AS ABSV,\n\t\t\tI,\n\t\t\t(DATE_TEST + TIME_TEST) AS TESTTIMESTAMP\n\t\tFROM\n\t\t\tFILTERED_IV,\n\t\t\tUNNEST(PROGRAM_V, MEAS_I) AS T (V, I) -- use program_v instead of meas_v since the case 0 volt from keithley hits compliance.\n\t)\nSELECT\n\tMODULE_NAME,\n\tABSV,\n\tI\nFROM\n\tUNNESTED\nWHERE\n\tABSV != 0 -- voltage=0 means module hits compliance current\nORDER BY\n\tTESTTIMESTAMP,\n\tRIGHT(MODULE_NAME, 4) ASC,\n\tABSV ASC;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "stage3: Dry-low temperature AFTER thermal cycle",
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "module_name"
+            ],
+            "keepFields": false
+          }
+        }
+      ],
+      "type": "xychart"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "mac_postgres_db"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 50,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "pointShape": "circle",
+            "pointSize": {
+              "fixed": 5
+            },
+            "pointStrokeWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "show": "lines"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "i"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "custom.scaleDistribution",
+                "value": {
+                  "log": 10,
+                  "type": "log"
+                }
+              },
+              {
+                "id": "max",
+                "value": 0.001
+              },
+              {
+                "id": "min",
+                "value": 1e-7
+              },
+              {
+                "id": "unit",
+                "value": "sci"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Leakage Current [A]"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "abs"
+            },
+            "properties": [
+              {
+                "id": "max",
+                "value": 850
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Reverse Bias [V]"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 24,
+        "x": 0,
+        "y": 39
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mapping": "auto",
+        "series": [
+          {
+            "y": {
+              "matcher": {
+                "id": "byName",
+                "options": "i"
+              }
+            }
+          }
+        ],
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.3.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "mac_postgres_db"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH\n\tLATEST_STAGES AS (\n\t\tSELECT DISTINCT\n\t\t\tON (SPLIT_PART(COMMENT, '-', 1)) SPLIT_PART(COMMENT, '-', 1) AS STAGE,\n\t\t\tCOMMENT,\n\t\t\tTO_DATE(SPLIT_PART(COMMENT, '-', 2), 'YYYYMMDD') AS TEST_DATE\n\t\tFROM\n\t\t\tPUBLIC.MODULE_IV_TEST\n\t\tWHERE\n\t\t\tCOMMENT ~ '^stage[1-4]-[0-9]{8}$'\n\t\tORDER BY\n\t\t\tSPLIT_PART(COMMENT, '-', 1),\n\t\t\tTO_DATE(SPLIT_PART(COMMENT, '-', 2), 'YYYYMMDD') DESC\n\t),\n\tSELECTED_STAGE AS (\n\t\tSELECT\n\t\t\tCOMMENT\n\t\tFROM\n\t\t\tLATEST_STAGES\n\t\tWHERE\n\t\t\tSTAGE = 'stage4'\n\t),\n\tFILTERED_IV AS (\n\t\tSELECT\n\t\t\tM.*,\n\t\t\tM.MEAS_I[ARRAY_LENGTH(M.MEAS_I, 1)] AS I_LAST\n\t\tFROM\n\t\t\tMODULE_IV_TEST AS M\n\t\t\tJOIN SELECTED_STAGE AS L ON M.COMMENT = L.COMMENT\n\t),\n\tUNNESTED AS (\n\t\tSELECT\n\t\t\tMODULE_NAME,\n\t\t\tABS(V) AS ABSV,\n\t\t\tI,\n\t\t\t(DATE_TEST + TIME_TEST) AS TESTTIMESTAMP\n\t\tFROM\n\t\t\tFILTERED_IV,\n\t\t\tUNNEST(PROGRAM_V, MEAS_I) AS T (V, I) -- use program_v instead of meas_v since the case 0 volt from keithley hits compliance.\n\t)\nSELECT\n\tMODULE_NAME,\n\tABSV,\n\tI\nFROM\n\tUNNESTED\nWHERE\n\tABSV != 0 -- voltage=0 means module hits compliance current\nORDER BY\n\tTESTTIMESTAMP,\n\tRIGHT(MODULE_NAME, 4) ASC,\n\tABSV ASC;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "stage4: Dry-Room temperature AFTER thermal cycle",
+      "transformations": [
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "module_name"
+            ],
+            "keepFields": false
+          }
+        }
+      ],
+      "type": "xychart"
+    }
+  ],
+  "preload": false,
+  "refresh": "5m",
+  "schemaVersion": 42,
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-5m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "IV_Curve Plot for MMTS",
+  "uid": "ivcurveformmts",
+  "version": 5
+}
